@@ -2,10 +2,12 @@
 #define MATRIX_H
 
 #include <vector>
+#include <iostream>
 
 class Matrix {
 public:
     Matrix(unsigned, unsigned);
+    Matrix(std::initializer_list<std::initializer_list<float> >);
     unsigned cols();
     unsigned rows();
     float determinant();

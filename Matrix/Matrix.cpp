@@ -7,6 +7,26 @@ Matrix::Matrix(unsigned i, unsigned j) {
     }
 }
 
+Matrix::Matrix(std::initializer_list<std::initializer_list<float> > list) {
+    matrix.resize(list.size());
+    for (auto& it : matrix) {
+        auto x = *list.begin();
+        it.resize(x.size());
+    }
+    auto x = list.begin();
+    auto y = *x;
+    auto z = y.begin();
+    for (auto& it : matrix) {
+        for (auto& is : it) {
+            is = *z;
+            ++z;
+        }
+        ++x;
+        y = *x;
+        z = y.begin();
+    }
+}
+
 unsigned Matrix::cols() {
     if (matrix.size() == 0) {
         return 0;

@@ -7,23 +7,25 @@ Matrix::Matrix(unsigned i, unsigned j) {
     }
 }
 
-Matrix::Matrix(std::initializer_list<std::initializer_list<float> > list) {
-    matrix.resize(list.size());
-    for (auto& it : matrix) {
-        auto x = *list.begin();
-        it.resize(x.size());
-    }
-    auto x = list.begin();
-    auto y = *x;
-    auto z = y.begin();
-    for (auto& it : matrix) {
-        for (auto& is : it) {
-            is = *z;
-            ++z;
+Matrix::Matrix(std::initializer_list<std::initializer_list<float>> list) {
+    unsigned rowCount = list.size();
+    if (rowCount > 0) {
+        //Set up the vectors for the matrix
+        matrix.resize(rowCount);
+        unsigned index = 0;
+        for (std::initializer_list<float> row : list) {
+            matrix[index].resize(row.size());
+            ++index;
         }
-        ++x;
-        y = *x;
-        z = y.begin();
+    }
+    unsigned rowIndex = 0;
+    for (std::initializer_list<float> row : list) {
+        unsigned columnIndex = 0;
+        for (float value : row) {
+            matrix[rowIndex][columnIndex] = value;
+            ++columnIndex;
+        }
+        ++rowIndex;
     }
 }
 

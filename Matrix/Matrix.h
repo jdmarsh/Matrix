@@ -1,6 +1,7 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
+#include <string>
 #include <vector>
 #include <iostream>
 
@@ -20,8 +21,8 @@ public:
     void scale(float);
 
     std::vector<float>& operator[](unsigned);
-    void operator+=(Matrix);
-    void operator-=(Matrix);
+    void operator+=(Matrix&);
+    void operator-=(Matrix&);
 private:
     std::vector<std::vector<float>> matrix;
 
@@ -32,11 +33,11 @@ private:
 };
 
 Matrix id(unsigned);
-Matrix operator*(Matrix, Matrix);
-Matrix operator+(Matrix, Matrix);
-Matrix operator-(Matrix, Matrix);
-Matrix operator-(Matrix);
-bool operator==(Matrix, Matrix);
-bool operator!=(Matrix, Matrix);
+Matrix operator*(Matrix&, Matrix&);
+Matrix operator+(Matrix&, Matrix&);
+Matrix operator-(Matrix&, Matrix&);
+Matrix operator-(Matrix&);
+bool operator==(Matrix&, Matrix&);
+bool operator!=(Matrix&, Matrix&);
 
 #endif

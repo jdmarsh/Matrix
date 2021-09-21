@@ -75,6 +75,18 @@ public:
 		return m_matrix.end();
 	}
 
+	constexpr T trace() const
+		requires(M == N)
+	{
+		T trace = 0;
+		for (uint32_t index = 0; index < M; ++index)
+		{
+			trace += m_matrix[index][index];
+		}
+
+		return trace;
+	}
+
 	constexpr T determinant() const
 	requires(M > 0 && M == N)
 	{
@@ -97,59 +109,103 @@ public:
 		}
 	}
 
-	constexpr T trace() const
-	requires(M == N)
+	constexpr Matrix<T, M, N> matrix_of_minors() const
+		requires(M > 0 && M == N)
 	{
-		T trace = 0;
-		for (unsigned index = 0; index < M; ++index)
+		Matrix<T, M, N> result;
+		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
-			trace += m_matrix[index][index];
+			for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
+			{
+				result.m_matrix[rowIndex][columnIndex] = submatrix(rowIndex, columnIndex).determinant();
+			}
 		}
+		return result;
+	}
 
-		return trace;
+	constexpr Matrix<T, M, N> cofactors() const
+	requires(M > 0 && M == N)
+	{
+		Matrix<T, M, N> result;
+		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
+		{
+			for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
+			{
+				result.m_matrix[rowIndex][columnIndex] = submatrix(rowIndex, columnIndex).determinant();
+				if ((rowIndex + columnIndex) % 2 == 1)
+				{
+					result.m_matrix[rowIndex][columnIndex] *= -1;
+				}
+			}
+		}
+		return result;
+	}
+
+	constexpr Matrix<T, M, N> adjugate() const
+		requires(M > 0 && M == N)
+	{
+		Matrix<T, M, N> result;
+		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
+		{
+			for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
+			{
+				result.m_matrix[columnIndex][rowIndex] = submatrix(rowIndex, columnIndex).determinant();
+				if ((rowIndex + columnIndex) % 2 == 1)
+				{
+					result.m_matrix[columnIndex][rowIndex] *= -1;
+				}
+			}
+		}
+		return result;
 	}
 
 	constexpr Matrix<T, M, N> inverse() const
 	requires(M > 0 && M == N)
 	{
-		auto det = determinant();
-		if (det == 0)
-		{
-			return Matrix<T, M, N>::Zero();
-		}
 
 		//If the matrix is a single entry, calculate the inverse differently
 		if constexpr (M == 1)
 		{
+			auto det = determinant();
+			if (det == 0)
+			{
+				return Matrix<T, M, N>::Zero();
+			}
+
 			auto X = Matrix<T, 1, 1>::Identity();
-			X *= 1.0f / det;
+			X *= static_cast<T>(1) / det;
 			return X;
 		}
-
-		//Calculate the inverse for larger matrix sizes
-		Matrix<T, M, N> result;
-		for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+		else
 		{
-			for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+			//Calculate the inverse for larger matrix sizes
+			auto result = cofactors();
+
+			T det = 0;
+			for (auto j = 0; j < N; ++j)
 			{
-				T a = submatrix(rowIndex, columnIndex).determinant();
-				result.m_matrix[rowIndex][columnIndex] = (((rowIndex + columnIndex) % 2) ? -a : a);
+				det += m_matrix[0][j] * result[0][j];
 			}
+
+			if (det == 0)
+			{
+				return Matrix<T, M, N>::Zero();
+			}
+
+			result = result.transpose();
+			result *= static_cast<T>(1) / det;
+
+			return result;
 		}
-
-		result = result.transpose();
-		result *= static_cast<T>(1) / det;
-
-		return result;
 	}
 
 	constexpr Matrix<T, N, M> transpose() const
 	requires(M == N)
 	{
 		Matrix<T, N, M> result;
-		for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
-			for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+			for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 			{
 				result.m_matrix[columnIndex][rowIndex] = m_matrix[rowIndex][columnIndex];
 			}
@@ -164,17 +220,33 @@ public:
 		result.m_matrix = m_matrix;
 
 		uint32_t x = 0;
+		//Search each column
 		for (uint32_t j = 0; j < N; ++j)
 		{
 			for (uint32_t i = x; i < M; ++i)
 			{
+				//Find the first row with a non zero element in this column
 				if (result.m_matrix[i][j])
 				{
-					result.rowswap(i, x);
-					result.rowdivide(x, result.m_matrix[x][j]);
+					//If it's not in the correct place, swap it to be under the last processed row
+					if (i != x)
+					{
+						result.m_matrix[i].swap(result.m_matrix[x]);
+					}
+
+					//Divide all entries in the row by the leading digit
+					for (auto& entry : result.m_matrix[x])
+					{
+						entry /= result.m_matrix[x][j];
+					}
+
+					//Readjust all lower rows to zero the leading digit
 					for (uint32_t a = x + 1; a < M; ++a)
 					{
-						result.rowminus(a, x, result.m_matrix[a][j]);
+						for (uint32_t b = 0; b < N; ++b)
+						{
+							result.m_matrix[a][b] -= result.m_matrix[x][b] * result.m_matrix[a][j];
+						}
 					}
 					++x;
 					break;
@@ -195,7 +267,10 @@ public:
 				{
 					for (uint32_t a = 0; a < rowIndex; ++a)
 					{
-						result.rowminus(a, rowIndex, result.m_matrix[a][columnIndex]);
+						for (uint32_t b = 0; b < N; ++b)
+						{
+							result.m_matrix[a][b] -= result.m_matrix[rowIndex][b] * result.m_matrix[a][columnIndex];
+						}
 					}
 					break;
 				}
@@ -206,7 +281,7 @@ public:
 
 	constexpr uint32_t rank() const
 	{
-		Matrix rref = RREF();
+		Matrix rref = REF();
 		uint32_t x = 0;
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -272,27 +347,6 @@ public:
 private:
 	std::array<std::array<T, N>, M> m_matrix;
 
-	constexpr void rowdivide(uint32_t row, T x)
-	{
-		for (auto& entry : m_matrix[row])
-		{
-			entry /= x;
-		}
-	}
-
-	constexpr void rowswap(uint32_t i, uint32_t j)
-	{
-		m_matrix[i].swap(m_matrix[j]);
-	}
-
-	constexpr void rowminus(uint32_t i, uint32_t j, T x)
-	{
-		for (uint32_t a = 0; a < N; ++a)
-		{
-			m_matrix[i][a] -= (m_matrix[j][a] * x);
-		}
-	}
-
 	constexpr Matrix<T, M - 1, N - 1> submatrix(uint32_t i, uint32_t j) const
 	{
 		Matrix<T, M - 1, N - 1> result;
@@ -325,18 +379,10 @@ template <class... Ts, std::size_t N>
 Matrix(Ts(&&..._)[N])->Matrix<std::common_type_t<Ts...>, sizeof...(Ts), N>;
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N, uint32_t P>
-Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA, const Matrix<TB, N, P>& mrxB)
+constexpr Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA, const Matrix<TB, N, P>& mrxB)
 {
 	//Create empty matrix of zeros
-	Matrix<std::common_type_t<TA, TB>, M, P> result;
-	//ToDo: implement begin/end functions to allow users to use range based for loops
-	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
-	{
-		for (uint32_t columnIndex = 0; columnIndex < P; ++columnIndex)
-		{
-			result[rowIndex][columnIndex] = 0;
-		}
-	}
+	auto result = Matrix<std::common_type_t<TA, TB>, M, P>::Zero();
 
 	//Calculate the matrix entries, for loops are rearranged to ensure contiguous data loading
 	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
@@ -354,7 +400,7 @@ Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA,
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N, typename F>
-Matrix<T, M, N> operator*(const Matrix<T, M, N>& matrix, const F& factor)
+constexpr Matrix<T, M, N> operator*(const Matrix<T, M, N>& matrix, const F& factor)
 requires (std::is_arithmetic_v<F>)
 {
 	auto result = matrix;
@@ -369,19 +415,19 @@ requires (std::is_arithmetic_v<F>)
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N, typename F>
-Matrix<T, M, N> operator*(const F& factor, const Matrix<T, M, N>& matrix)
+constexpr Matrix<T, M, N> operator*(const F& factor, const Matrix<T, M, N>& matrix)
 requires (std::is_arithmetic_v<F>)
 {
 	return matrix * factor;
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-Matrix<std::common_type_t<TA, TB>, M, N> operator+(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator+(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<std::common_type_t<TA, TB>, M, N> result();
-	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+	Matrix<std::common_type_t<TA, TB>, M, N> result;
+	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
-		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 		{
 			result[rowIndex][columnIndex] = mrxA[rowIndex][columnIndex] + mrxB[rowIndex][columnIndex];
 		}
@@ -391,12 +437,12 @@ Matrix<std::common_type_t<TA, TB>, M, N> operator+(const Matrix<TA, M, N>& mrxA,
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-Matrix<std::common_type_t<TA, TB>, M, N> operator-(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator-(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<std::common_type_t<TA, TB>, M, N> result();
-	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+	Matrix<std::common_type_t<TA, TB>, M, N> result;
+	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
-		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 		{
 			result[rowIndex][columnIndex] = mrxA[rowIndex][columnIndex] - mrxB[rowIndex][columnIndex];
 		}
@@ -406,12 +452,12 @@ Matrix<std::common_type_t<TA, TB>, M, N> operator-(const Matrix<TA, M, N>& mrxA,
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N>
-Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
+constexpr Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
 {
-	Matrix<T, M, N> result();
-	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+	Matrix<T, M, N> result;
+	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
-		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 		{
 			result[rowIndex][columnIndex] = -mrxA[rowIndex][columnIndex];
 		}
@@ -421,11 +467,11 @@ Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-bool operator==(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr bool operator==(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
+	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
-		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
+		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 		{
 			if (mrxA[rowIndex][columnIndex] != mrxB[rowIndex][columnIndex])
 			{
@@ -438,7 +484,7 @@ bool operator==(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-bool operator!=(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr bool operator!=(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
 	return !(mrxA == mrxB);
 }

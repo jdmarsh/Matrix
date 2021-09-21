@@ -25,43 +25,45 @@ void print_matrix(const Matrix<T, M, N>& matrix)
 
 int main()
 {
-	auto A = Matrix{ {6.0, 2.0}, {0.0, 4.0} };
-	
+	constexpr auto A = Matrix{ {6.0, 2.0}, {1.0, 4.0} };
+	static_assert(A.determinant() == 22);
+
 	print_matrix(A);
 	
 	constexpr auto I = Matrix<float, 3, 3>::Identity();
-	
 	print_matrix(I);
-	auto Z = Matrix<float, 3, 3>::Zero();
+
+	constexpr auto Z = Matrix<float, 3, 3>::Zero();
 	print_matrix(Z);
 	
 	std::cout << "det: " << A.determinant() << "\n";
 	std::cout << "trace: " << A.trace() << "\n";
 	std::cout << "rank: " << A.rank() << "\n";
 	
-	auto AI = A.inverse();
+	constexpr auto AI = A.inverse();
 	print_matrix(AI);
 	
-	auto B = A * AI;
+	constexpr auto B = A * AI;
 	print_matrix(B);
 	
-	auto AT = A.transpose();
+	constexpr auto AT = A.transpose();
 	print_matrix(AT);
 	
-	auto REF = A.REF();
+	constexpr auto REF = A.REF();
 	print_matrix(REF);
 	
-	auto RREF = A.RREF();
+	constexpr auto RREF = A.RREF();
 	print_matrix(RREF);
 	
 	print_matrix(A);
 	
-	A += A;
-	print_matrix(A);
+	auto AC = A;
+	AC += AC;
+	print_matrix(AC);
 	
-	A -= RREF;
-	print_matrix(A);
+	AC -= RREF;
+	print_matrix(AC);
 	
-	A *= 5;
-	print_matrix(A);
+	AC *= 5;
+	print_matrix(AC);
 }

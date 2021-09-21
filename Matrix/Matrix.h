@@ -2,14 +2,14 @@
 
 #include <array>
 
-template <uint32_t M, uint32_t N>
+template <std::floating_point T, uint32_t M, uint32_t N>
 class Matrix
 {
 public:
-	static Matrix<M, N> Identity()
+	static Matrix<T, M, N> Identity()
 	requires(M == N)
 	{
-		Matrix<M, N> identity;
+		Matrix<T, M, N> identity;
 		for (uint32_t i = 0; i < M; ++i)
 		{
 			for (uint32_t j = 0; j < N; ++j)
@@ -21,9 +21,9 @@ public:
 		return identity;
 	}
 
-	static Matrix<M, N> Zero()
+	static Matrix<T, M, N> Zero()
 	{
-		Matrix<M, N> identity;
+		Matrix<T, M, N> identity;
 		for (uint32_t i = 0; i < M; ++i)
 		{
 			for (uint32_t j = 0; j < N; ++j)
@@ -35,27 +35,27 @@ public:
 		return identity;
 	}
 
-	std::array<float, M>::iterator begin()
+	std::array<T, M>::iterator begin()
 	{
 		return m_matrix.begin();
 	}
 
-	std::array<float, M>::const_iterator begin() const
+	std::array<T, M>::const_iterator begin() const
 	{
 		return m_matrix.begin();
 	}
 
-	std::array<float, M>::iterator end()
+	std::array<T, M>::iterator end()
 	{
 		return m_matrix.end();
 	}
 
-	std::array<float, M>::const_iterator end() const
+	std::array<T, M>::const_iterator end() const
 	{
 		return m_matrix.end();
 	}
 
-	constexpr float determinant() const
+	float determinant() const
 	requires(M > 0 && M == N)
 	{
 		//Base case
@@ -89,25 +89,25 @@ public:
 		return trace;
 	}
 
-	Matrix<M, N> inverse() const
+	Matrix<T, M, N> inverse() const
 	requires(M > 0 && M == N)
 	{
 		auto det = determinant();
 		if (det == 0)
 		{
-			return Matrix<M, N>::Zero();
+			return Matrix<T, M, N>::Zero();
 		}
 
 		//If the matrix is a single entry, calculate the inverse differently
 		if constexpr (M == 1)
 		{
-			auto X = Matrix<1, 1>::Identity();
+			auto X = Matrix<T, 1, 1>::Identity();
 			X *= 1.0f / det;
 			return X;
 		}
 
 		//Calculate the inverse for larger matrix sizes
-		Matrix<M, N> result;
+		Matrix<T, M, N> result;
 		for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
 			for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
@@ -123,10 +123,10 @@ public:
 		return result;
 	}
 
-	Matrix<N, M> transpose() const
+	Matrix<T, N, M> transpose() const
 	requires(M == N)
 	{
-		Matrix<N, M> result;
+		Matrix<T, N, M> result;
 		for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
 			for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
@@ -138,9 +138,9 @@ public:
 		return result;
 	}
 
-	Matrix<M, N> REF() const
+	Matrix<T, M, N> REF() const
 	{
-		Matrix<M, N> result;
+		Matrix<T, M, N> result;
 		result.m_matrix = m_matrix;
 
 		uint32_t x = 0;
@@ -164,7 +164,7 @@ public:
 		return result;
 	}
 
-	Matrix<M, N> RREF() const
+	Matrix<T, M, N> RREF() const
 	{
 		Matrix result = REF();
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
@@ -212,7 +212,8 @@ public:
 		return m_matrix[i];
 	}
 
-	void operator+=(const Matrix<M, N>& other)
+	template<std::floating_point TO>
+	void operator+=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -223,7 +224,8 @@ public:
 		}
 	}
 
-	void operator-=(const Matrix<M, N>& other)
+	template<std::floating_point TO>
+	void operator-=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -271,9 +273,9 @@ private:
 		}
 	}
 
-	constexpr Matrix<M - 1, N - 1> submatrix(uint32_t i, uint32_t j) const
+	Matrix<T, M - 1, N - 1> submatrix(uint32_t i, uint32_t j) const
 	{
-		Matrix<M - 1, N - 1> result;
+		Matrix<T, M - 1, N - 1> result;
 		for (uint32_t row = 0; row < M; ++row)
 		{
 			if (row == i)
@@ -299,11 +301,11 @@ private:
 	}
 };
 
-template<uint32_t M, uint32_t N, uint32_t P>
-Matrix<M, P> operator*(const Matrix<M, N>& mrxA, const Matrix<N, P>& mrxB)
+template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N, uint32_t P>
+Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA, const Matrix<TB, N, P>& mrxB)
 {
 	//Create empty matrix of zeros
-	Matrix<M, P> result;
+	Matrix<std::common_type_t<TA, TB>, M, P> result;
 	//ToDo: implement begin/end functions to allow users to use range based for loops
 	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
@@ -328,9 +330,9 @@ Matrix<M, P> operator*(const Matrix<M, N>& mrxA, const Matrix<N, P>& mrxB)
 	return result;
 }
 
-template<uint32_t M, uint32_t N, typename T>
-Matrix<M, N> operator*(const Matrix<M, N>& matrix, const T& factor)
-requires (std::is_arithmetic_v<T>)
+template<std::floating_point T, uint32_t M, uint32_t N, typename F>
+Matrix<T, M, N> operator*(const Matrix<T, M, N>& matrix, const F& factor)
+requires (std::is_arithmetic_v<F>)
 {
 	auto result = matrix;
 	for (auto& row : result)
@@ -343,17 +345,17 @@ requires (std::is_arithmetic_v<T>)
 	return result;
 }
 
-template<uint32_t M, uint32_t N, typename T>
-Matrix<M, N> operator*(const T& factor, const Matrix<M, N>& matrix)
-requires (std::is_arithmetic_v<T>)
+template<std::floating_point T, uint32_t M, uint32_t N, typename F>
+Matrix<T, M, N> operator*(const F& factor, const Matrix<T, M, N>& matrix)
+requires (std::is_arithmetic_v<F>)
 {
 	return matrix * factor;
 }
 
-template<uint32_t M, uint32_t N>
-Matrix<M, N> operator+(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
+template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
+Matrix<std::common_type_t<TA, TB>, M, N> operator+(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<M, N> result();
+	Matrix<std::common_type_t<TA, TB>, M, N> result();
 	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
 		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
@@ -365,10 +367,10 @@ Matrix<M, N> operator+(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
 	return result;
 }
 
-template<uint32_t M, uint32_t N>
-Matrix<M, N> operator-(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
+template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
+Matrix<std::common_type_t<TA, TB>, M, N> operator-(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<M, N> result();
+	Matrix<std::common_type_t<TA, TB>, M, N> result();
 	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
 		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
@@ -380,10 +382,10 @@ Matrix<M, N> operator-(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
 	return result;
 }
 
-template<uint32_t M, uint32_t N>
-Matrix<M, N> operator-(const Matrix<M, N>& mrxA)
+template<std::floating_point T, uint32_t M, uint32_t N>
+Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
 {
-	Matrix<M, N> result();
+	Matrix<T, M, N> result();
 	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
 		for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
@@ -395,8 +397,8 @@ Matrix<M, N> operator-(const Matrix<M, N>& mrxA)
 	return result;
 }
 
-template<uint32_t M, uint32_t N>
-bool operator==(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
+template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
+bool operator==(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
 	for (unsigned rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
@@ -412,8 +414,8 @@ bool operator==(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
 	return true;
 }
 
-template<uint32_t M, uint32_t N>
-bool operator!=(const Matrix<M, N>& mrxA, const Matrix<M, N>& mrxB)
+template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
+bool operator!=(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
 {
 	return !(mrxA == mrxB);
 }

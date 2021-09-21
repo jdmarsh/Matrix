@@ -3,10 +3,30 @@
 #include <array>
 
 template <std::floating_point T, uint32_t M, uint32_t N>
-class Matrix
+struct Matrix
 {
+	static auto constexpr rows = M;
+	static auto constexpr cols = N;
+	static auto constexpr size = M * N;
+
+private:
+	template <typename Input, std::size_t... Is>
+	auto constexpr init(Input&& in, std::index_sequence<Is...>)
+	{
+		return std::array<T, sizeof...(Is)>{ static_cast<T>(in[Is])... };
+	}
+
 public:
-	static Matrix<T, M, N> Identity()
+	constexpr Matrix() = default;
+
+	template <typename... Ts>
+	constexpr Matrix(Ts(&&...in)[N])
+	requires (sizeof...(Ts) == M && ((std::is_nothrow_convertible_v<Ts, T>) && ...))
+	: m_matrix{ init(std::move(in), std::make_index_sequence<N>{})... }
+	{
+	}
+
+	constexpr static Matrix<T, M, N> Identity()
 	requires(M == N)
 	{
 		Matrix<T, M, N> identity;
@@ -14,48 +34,48 @@ public:
 		{
 			for (uint32_t j = 0; j < N; ++j)
 			{
-				identity[i][j] = (i == j) ? 1 : 0;
+				identity[i][j] = static_cast<T>(i == j);
 			}
 		}
 
 		return identity;
 	}
 
-	static Matrix<T, M, N> Zero()
+	constexpr static Matrix<T, M, N> Zero()
 	{
 		Matrix<T, M, N> identity;
 		for (uint32_t i = 0; i < M; ++i)
 		{
 			for (uint32_t j = 0; j < N; ++j)
 			{
-				identity[i][j] = 0;
+				identity[i][j] = static_cast<T>(0);
 			}
 		}
 
 		return identity;
 	}
 
-	std::array<T, M>::iterator begin()
+	constexpr std::array<T, M>::iterator begin()
 	{
 		return m_matrix.begin();
 	}
 
-	std::array<T, M>::const_iterator begin() const
+	constexpr std::array<T, M>::const_iterator begin() const
 	{
 		return m_matrix.begin();
 	}
 
-	std::array<T, M>::iterator end()
+	constexpr std::array<T, M>::iterator end()
 	{
 		return m_matrix.end();
 	}
 
-	std::array<T, M>::const_iterator end() const
+	constexpr std::array<T, M>::const_iterator end() const
 	{
 		return m_matrix.end();
 	}
 
-	float determinant() const
+	constexpr T determinant() const
 	requires(M > 0 && M == N)
 	{
 		//Base case
@@ -66,10 +86,10 @@ public:
 		else
 		{
 			//Recursively calculate the determinant
-			float determinant = 0;
+			T determinant = 0;
 			for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
 			{
-				float a = m_matrix[0][columnIndex] * submatrix(0, columnIndex).determinant();
+				T a = m_matrix[0][columnIndex] * submatrix(0, columnIndex).determinant();
 				determinant += ((columnIndex % 2) ? -a : a);
 			}
 
@@ -77,10 +97,10 @@ public:
 		}
 	}
 
-	float trace() const
+	constexpr T trace() const
 	requires(M == N)
 	{
-		float trace = 0;
+		T trace = 0;
 		for (unsigned index = 0; index < M; ++index)
 		{
 			trace += m_matrix[index][index];
@@ -89,7 +109,7 @@ public:
 		return trace;
 	}
 
-	Matrix<T, M, N> inverse() const
+	constexpr Matrix<T, M, N> inverse() const
 	requires(M > 0 && M == N)
 	{
 		auto det = determinant();
@@ -112,18 +132,18 @@ public:
 		{
 			for (unsigned columnIndex = 0; columnIndex < N; ++columnIndex)
 			{
-				float a = submatrix(rowIndex, columnIndex).determinant();
+				T a = submatrix(rowIndex, columnIndex).determinant();
 				result.m_matrix[rowIndex][columnIndex] = (((rowIndex + columnIndex) % 2) ? -a : a);
 			}
 		}
 
 		result = result.transpose();
-		result *= 1.0f / det;
+		result *= static_cast<T>(1) / det;
 
 		return result;
 	}
 
-	Matrix<T, N, M> transpose() const
+	constexpr Matrix<T, N, M> transpose() const
 	requires(M == N)
 	{
 		Matrix<T, N, M> result;
@@ -138,7 +158,7 @@ public:
 		return result;
 	}
 
-	Matrix<T, M, N> REF() const
+	constexpr Matrix<T, M, N> REF() const
 	{
 		Matrix<T, M, N> result;
 		result.m_matrix = m_matrix;
@@ -164,7 +184,7 @@ public:
 		return result;
 	}
 
-	Matrix<T, M, N> RREF() const
+	constexpr Matrix<T, M, N> RREF() const
 	{
 		Matrix result = REF();
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
@@ -184,7 +204,7 @@ public:
 		return result;
 	}
 
-	uint32_t rank() const
+	constexpr uint32_t rank() const
 	{
 		Matrix rref = RREF();
 		uint32_t x = 0;
@@ -202,18 +222,18 @@ public:
 		return x;
 	}
 
-	std::array<float, N>& operator[](uint32_t i)
+	constexpr std::array<T, N>& operator[](uint32_t i)
 	{
 		return m_matrix[i];
 	}
 
-	const std::array<float, N>& operator[](uint32_t i) const
+	constexpr const std::array<T, N>& operator[](uint32_t i) const
 	{
 		return m_matrix[i];
 	}
 
 	template<std::floating_point TO>
-	void operator+=(const Matrix<TO, M, N>& other)
+	constexpr void operator+=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -225,7 +245,7 @@ public:
 	}
 
 	template<std::floating_point TO>
-	void operator-=(const Matrix<TO, M, N>& other)
+	constexpr void operator-=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -237,7 +257,7 @@ public:
 	}
 
 	template <typename T>
-	void operator*=(const T& factor)
+	constexpr void operator*=(const T& factor)
 	requires (std::is_arithmetic_v<T>)
 	{
 		for (auto& row : m_matrix)
@@ -250,9 +270,9 @@ public:
 	}
 
 private:
-	std::array<std::array<float, N>, M> m_matrix;
+	std::array<std::array<T, N>, M> m_matrix;
 
-	void rowdivide(uint32_t row, float x)
+	constexpr void rowdivide(uint32_t row, T x)
 	{
 		for (auto& entry : m_matrix[row])
 		{
@@ -260,12 +280,12 @@ private:
 		}
 	}
 
-	void rowswap(uint32_t i, uint32_t j)
+	constexpr void rowswap(uint32_t i, uint32_t j)
 	{
 		m_matrix[i].swap(m_matrix[j]);
 	}
 
-	void rowminus(uint32_t i, uint32_t j, float x)
+	constexpr void rowminus(uint32_t i, uint32_t j, T x)
 	{
 		for (uint32_t a = 0; a < N; ++a)
 		{
@@ -273,7 +293,7 @@ private:
 		}
 	}
 
-	Matrix<T, M - 1, N - 1> submatrix(uint32_t i, uint32_t j) const
+	constexpr Matrix<T, M - 1, N - 1> submatrix(uint32_t i, uint32_t j) const
 	{
 		Matrix<T, M - 1, N - 1> result;
 		for (uint32_t row = 0; row < M; ++row)
@@ -300,6 +320,9 @@ private:
 		return result;
 	}
 };
+
+template <class... Ts, std::size_t N>
+Matrix(Ts(&&..._)[N])->Matrix<std::common_type_t<Ts...>, sizeof...(Ts), N>;
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N, uint32_t P>
 Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA, const Matrix<TB, N, P>& mrxB)

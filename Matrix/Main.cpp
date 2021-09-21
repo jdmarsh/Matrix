@@ -1,8 +1,8 @@
 #include <iostream>
 #include "Matrix.h"
 
-template<uint32_t M, uint32_t N>
-void print_matrix(const Matrix<float, M, N>& matrix)
+template<std::floating_point T, uint32_t M, uint32_t N>
+void print_matrix(const Matrix<T, M, N>& matrix)
 {
 	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 	{
@@ -25,16 +25,12 @@ void print_matrix(const Matrix<float, M, N>& matrix)
 
 int main()
 {
-	Matrix<float, 2, 2> A;
-	A[0][0] = 6;
-	A[0][1] = 2;
-	A[1][0] = 0;
-	A[1][1] = 4;
-
+	auto A = Matrix{ {6.0, 2.0}, {0.0, 4.0} };
+	
 	print_matrix(A);
-
-	auto I = Matrix<float, 3, 3>::Identity();
-
+	
+	constexpr auto I = Matrix<float, 3, 3>::Identity();
+	
 	print_matrix(I);
 	auto Z = Matrix<float, 3, 3>::Zero();
 	print_matrix(Z);

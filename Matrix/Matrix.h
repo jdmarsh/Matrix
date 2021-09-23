@@ -9,20 +9,13 @@ struct Matrix
 	static auto constexpr cols = N;
 	static auto constexpr size = M * N;
 
-private:
-	template <typename Input, std::size_t... Is>
-	auto constexpr init(Input&& in, std::index_sequence<Is...>)
-	{
-		return std::array<T, sizeof...(Is)>{ static_cast<T>(in[Is])... };
-	}
-
 public:
 	constexpr Matrix() = default;
 
 	template <typename... Ts>
 	constexpr Matrix(Ts(&&...in)[N])
 	requires (sizeof...(Ts) == M && ((std::is_nothrow_convertible_v<Ts, T>) && ...))
-	: m_matrix{ init(std::move(in), std::make_index_sequence<N>{})... }
+	: m_matrix{ std::to_array(in)... }
 	{
 	}
 
@@ -62,7 +55,12 @@ public:
 
 	constexpr std::array<T, M>::const_iterator begin() const
 	{
-		return m_matrix.begin();
+		return m_matrix.cbegin();
+	}
+
+	constexpr std::array<T, M>::const_iterator cbegin() const
+	{
+		return m_matrix.cbegin();
 	}
 
 	constexpr std::array<T, M>::iterator end()
@@ -72,11 +70,16 @@ public:
 
 	constexpr std::array<T, M>::const_iterator end() const
 	{
-		return m_matrix.end();
+		return m_matrix.cend();
+	}
+
+	constexpr std::array<T, M>::const_iterator cend() const
+	{
+		return m_matrix.cend();
 	}
 
 	constexpr T trace() const
-		requires(M == N)
+	requires(M == N)
 	{
 		T trace = 0;
 		for (uint32_t index = 0; index < M; ++index)
@@ -308,7 +311,7 @@ public:
 	}
 
 	template<std::floating_point TO>
-	constexpr void operator+=(const Matrix<TO, M, N>& other)
+	constexpr Matrix<T, M, N>& operator+=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -317,10 +320,12 @@ public:
 				m_matrix[rowIndex][columnIndex] += other[rowIndex][columnIndex];
 			}
 		}
+
+		return *this;
 	}
 
 	template<std::floating_point TO>
-	constexpr void operator-=(const Matrix<TO, M, N>& other)
+	constexpr  Matrix<T, M, N>& operator-=(const Matrix<TO, M, N>& other)
 	{
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
 		{
@@ -329,11 +334,13 @@ public:
 				m_matrix[rowIndex][columnIndex] -= other[rowIndex][columnIndex];
 			}
 		}
+
+		return *this;
 	}
 
-	template <typename T>
-	constexpr void operator*=(const T& factor)
-	requires (std::is_arithmetic_v<T>)
+	template <typename F>
+	constexpr  Matrix<T, M, N>& operator*=(const F& factor)
+	requires (std::is_arithmetic_v<F>)
 	{
 		for (auto& row : m_matrix)
 		{
@@ -342,6 +349,38 @@ public:
 				entry *= factor;
 			}
 		}
+
+		return *this;
+	}
+
+	template<std::floating_point TO, uint32_t MO, uint32_t NO>
+	constexpr bool operator==(const Matrix<TO, MO, NO>& other)
+	{
+		if constexpr (MO != M || NO != N)
+		{
+			return false;
+		}
+		else
+		{
+			for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
+			{
+				for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
+				{
+					if (m_matrix[rowIndex][columnIndex] != other[rowIndex][columnIndex])
+					{
+						return false;
+					}
+				}
+			}
+
+			return true;
+		}
+	}
+
+	template<std::floating_point TO, uint32_t MO, uint32_t NO>
+	constexpr bool operator!=(const Matrix<TO, MO, NO>& other)
+	{
+		return !(*this == other);
 	}
 
 private:
@@ -464,27 +503,4 @@ constexpr Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
 	}
 
 	return result;
-}
-
-template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-constexpr bool operator==(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
-{
-	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
-	{
-		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
-		{
-			if (mrxA[rowIndex][columnIndex] != mrxB[rowIndex][columnIndex])
-			{
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
-template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-constexpr bool operator!=(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
-{
-	return !(mrxA == mrxB);
 }

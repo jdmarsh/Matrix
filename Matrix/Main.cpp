@@ -36,9 +36,13 @@ int main()
 	constexpr auto Z = Matrix<float, 3, 3>::Zero();
 	print_matrix(Z);
 	
+	std::cout << "size: " << sizeof(A) << "\n";
 	std::cout << "det: " << A.determinant() << "\n";
 	std::cout << "trace: " << A.trace() << "\n";
 	std::cout << "rank: " << A.rank() << "\n";
+
+	constexpr auto MA = -A;
+	print_matrix(MA);
 	
 	constexpr auto AI = A.inverse();
 	print_matrix(AI);
@@ -56,6 +60,10 @@ int main()
 	print_matrix(RREF);
 	
 	print_matrix(A);
+
+	print_matrix(A * 2);
+	print_matrix(A + A);
+	print_matrix(A - A);
 	
 	auto AC = A;
 	AC += AC;

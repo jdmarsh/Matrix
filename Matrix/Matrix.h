@@ -113,7 +113,7 @@ public:
 	}
 
 	constexpr Matrix<T, M, N> matrix_of_minors() const
-		requires(M > 0 && M == N)
+	requires(M > 0 && M == N)
 	{
 		Matrix<T, M, N> result;
 		for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
@@ -420,7 +420,6 @@ Matrix(Ts(&&..._)[N])->Matrix<std::common_type_t<Ts...>, sizeof...(Ts), N>;
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N, uint32_t P>
 constexpr Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M, N>& mrxA, const Matrix<TB, N, P>& mrxB)
 {
-	//Create empty matrix of zeros
 	auto result = Matrix<std::common_type_t<TA, TB>, M, P>::Zero();
 
 	//Calculate the matrix entries, for loops are rearranged to ensure contiguous data loading
@@ -439,68 +438,33 @@ constexpr Matrix<std::common_type_t<TA, TB>, M, P> operator*(const Matrix<TA, M,
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N, typename F>
-constexpr Matrix<T, M, N> operator*(const Matrix<T, M, N>& matrix, const F& factor)
+constexpr Matrix<T, M, N> operator*(Matrix<T, M, N> matrix, const F& factor)
 requires (std::is_arithmetic_v<F>)
 {
-	auto result = matrix;
-	for (auto& row : result)
-	{
-		for (auto& entry : row)
-		{
-			entry *= factor;
-		}
-	}
-	return result;
+	return matrix *= factor;
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N, typename F>
-constexpr Matrix<T, M, N> operator*(const F& factor, const Matrix<T, M, N>& matrix)
+constexpr Matrix<T, M, N> operator*(const F& factor, Matrix<T, M, N> matrix)
 requires (std::is_arithmetic_v<F>)
 {
-	return matrix * factor;
+	return matrix *= factor;
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator+(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator+(Matrix<TA, M, N> mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<std::common_type_t<TA, TB>, M, N> result;
-	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
-	{
-		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
-		{
-			result[rowIndex][columnIndex] = mrxA[rowIndex][columnIndex] + mrxB[rowIndex][columnIndex];
-		}
-	}
-
-	return result;
+	return mrxA += mrxB;
 }
 
 template<std::floating_point TA, std::floating_point TB, uint32_t M, uint32_t N>
-constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator-(const Matrix<TA, M, N>& mrxA, const Matrix<TB, M, N>& mrxB)
+constexpr Matrix<std::common_type_t<TA, TB>, M, N> operator-(Matrix<TA, M, N> mrxA, const Matrix<TB, M, N>& mrxB)
 {
-	Matrix<std::common_type_t<TA, TB>, M, N> result;
-	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
-	{
-		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
-		{
-			result[rowIndex][columnIndex] = mrxA[rowIndex][columnIndex] - mrxB[rowIndex][columnIndex];
-		}
-	}
-
-	return result;
+	return mrxA -= mrxB;
 }
 
 template<std::floating_point T, uint32_t M, uint32_t N>
-constexpr Matrix<T, M, N> operator-(const Matrix<T, M, N>& mrxA)
+constexpr Matrix<T, M, N> operator-(Matrix<T, M, N> matrix)
 {
-	Matrix<T, M, N> result;
-	for (uint32_t rowIndex = 0; rowIndex < M; ++rowIndex)
-	{
-		for (uint32_t columnIndex = 0; columnIndex < N; ++columnIndex)
-		{
-			result[rowIndex][columnIndex] = -mrxA[rowIndex][columnIndex];
-		}
-	}
-
-	return result;
+	return matrix *= -1;
 }
